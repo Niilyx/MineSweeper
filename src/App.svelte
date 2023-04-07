@@ -1,14 +1,21 @@
 <script>
-  import NewGameButton from './lib/NewGameButton.svelte';
+  import Grid from "./lib/Grid.svelte";
+
+  let grid;
+  const newGame = () => {
+    grid.newGame();
+  }
 </script>
 
 <main>
   <div id="wrapper">
     <div class="HUD">
-        <NewGameButton />
+      <button on:click={newGame}>
+        Nouvelle Partie
+      </button>
     </div>
     <div id="grid">
-
+      <Grid bind:this={grid}/>
     </div>
   </div>
 </main>
