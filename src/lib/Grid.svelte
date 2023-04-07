@@ -1,6 +1,10 @@
 <script>
+    let gameInstance;
+    let mainElement;
+
     const Game = class {
-        constructor(minesTotal, w = 10, h = 5) {
+        constructor(minesTotal, w, h) {
+            debugger
             this.grid = [];
             this.gridW = w;
             this.gridH = h;
@@ -11,6 +15,7 @@
 
             this.initGrid();
             this.placeMines();
+            this.setupValues();
 
             this.gameOver = 0; // 0: not over, 1: won, -1: lost
         }
@@ -43,11 +48,23 @@
                 const x = Math.floor(Math.random() * this.getWidth());
                 const y = Math.floor(Math.random() * this.getHeight());
                 if (!this.grid[y][x].mine) {
-                    this.grid[y][x].mine = true;
+                    this.grid[y][x].mine = 1;
                     minesToPlace--;
                 }
             }
         }
+        setupValues(){
+            for (let y = 0; y < this.getHeight(); y++) {
+                for (let x = 0; x < this.getWidth(); x++) {
+                    if (this.grid[y][x].mine) {
+                        continue;
+                    }
+                    const surroundingMines = this.getSurroundingMines(x, y);
+                    this.grid[y][x].value = surroundingMines === 0 ? "" : `./src/assets/numbers/${surroundingMines}.png`;
+                }
+            }
+        }
+
         setGameOver(result) {
             this.gameOver = result;
             for (let i = 0; i < this.getHeight(); i++) {
@@ -62,14 +79,44 @@
                 return;
             }
             if (this.grid[y][x].mine) {
+                this.grid[y][x].mine = 2;
                 this.setGameOver(-1);
                 return;
             }
             if (this.grid[y][x].state === Cell.CELL_STATES.UNCLICKED) {
                 this.grid[y][x].state = Cell.CELL_STATES.REVEALED;
-
-                const surroundingMines = this.getSurroundingMines(x, y);
-                this.grid[y][x].value = new String(surroundingMines === 0 ? "" : `./src/assets/numbers/${surroundingMines}.png`);
+                if (this.grid[y][x].value === "") {
+                    this.revealSurrounding(x, y);
+                }
+            }
+            if (this.checkWin()) {
+                this.setGameOver(1);
+                debugger
+                alert("You win!")
+            }
+        }
+        checkWin() {
+            for (let y = 0; y < this.getHeight(); y++) {
+                for (let x = 0; x < this.getWidth(); x++) {
+                    if (this.grid[y][x].state === Cell.CELL_STATES.UNCLICKED && !this.grid[y][x].mine) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        revealSurrounding(x, y) {
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) {
+                        continue;
+                    }
+                    if (this.grid[y + i] && this.grid[y + i][x + j]) {
+                        if (this.grid[y + i][x + j].state === Cell.CELL_STATES.UNCLICKED) {
+                            this.cellLeftClicked(x + j, y + i);
+                        }
+                    }
+                }
             }
         }
         getSurroundingMines(x, y) {
@@ -89,7 +136,7 @@
             return mines;
         }
         getCellImage(x, y) {
-            if (this.grid[y][x].state === Cell.CELL_STATES.UNCLICKED) return "";
+            if (this.grid[y][x].state !== Cell.CELL_STATES.REVEALED) return "";
             return this.grid[y][x].mine ? "./src/assets/mine.png" : this.grid[y][x].value;
         }
     };
@@ -97,7 +144,7 @@
     const Cell = class {
         constructor() {
             this.state = Cell.CELL_STATES.UNCLICKED;
-            this.mine = false;
+            this.mine = 0; // 0: no mine, 1: mine, 2: clicked mine
             this.value = "";
         }
         nextState() {
@@ -122,18 +169,18 @@
         DOUBT: "doubt",
     };
 
-    let gameInstance;
-    let mainElement;
     
-    export const newGame = () => {
+    export const newGame = (minesTotal, width, height) => {
         try {
-            gameInstance = new Game(10);
+            gameInstance = new Game(minesTotal, width, height);
         } catch (e) {
             console.error(e);
         }
     };
 
     const onCellClick = (event) => {
+        if (gameInstance.gameOver) return;
+
         /*
         0: left click
         1: middle click
@@ -160,18 +207,26 @@
 
 
 
+
+
+
 <grid bind:this={mainElement} on:contextmenu|preventDefault={() => {return false;}}>
     {#if gameInstance}
         <wrapper>
-            {#each gameInstance.getGrid() as line, y}
-                <div class="line">
-                    {#each line as cell, x}
-                        <div id="{x};{y}" class="cell {cell.state}"
-                        on:mouseup|preventDefault|stopPropagation={onCellClick}
-                        ><img src={gameInstance.getCellImage(x, y)} alt={cell.value.at(cell.value.lastIndexOf(".") - 1)}/></div>
-                    {/each}
-                </div>
+
+        {#each gameInstance.getGrid() as line, y}
+        <div class="line">
+
+            {#each line as cell, x}
+            <div id="{x};{y}" class="cell {cell.state} {cell.mine === 2 ? 'myFault' : ''}"
+            on:mouseup|preventDefault|stopPropagation={onCellClick}
+            ><!-- svelte-ignore a11y-missing-attribute -->
+            <img src={gameInstance.getCellImage(x, y)}/></div>
             {/each}
+
+        </div>
+        {/each}
+
         </wrapper>
     {/if}
 </grid>
@@ -180,8 +235,16 @@
 
 
 
+
+
 <style>
+    img {
+        pointer-events: none;
+    }
     grid {
+        user-select: none;
+        -moz-user-select: none;
+
         margin: 0 auto;
         width: 80%;
 
@@ -233,5 +296,9 @@
 
     .doubt {
         background-color: #f0f0f0;
+    }
+
+    .myFault {
+        background-color: red;
     }
 </style>
