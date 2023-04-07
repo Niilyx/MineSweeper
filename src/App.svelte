@@ -7,6 +7,7 @@
   }
 </script>
 
+<h1>Démineur</h1>
 <main>
   <div id="wrapper">
     <div class="HUD">
@@ -25,12 +26,12 @@
     width: 100%;
     height: 100%;
     margin: 0 auto;
-    background-color: #131516;
     color: white;
   }
   #wrapper {
     margin: 0 auto;
     width: 100%;
+    height: 90%;
     display: flex;
 
     justify-content: center;
@@ -40,12 +41,9 @@
   }
   #grid {
     margin: 0 auto;
-    width: 80%;
 
     display: flex;
     justify-content: center;
     align-content: center;
-
-    outline: black solid 1px;
   }
 </style>
