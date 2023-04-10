@@ -1,6 +1,19 @@
 <script>
+    import { createEventDispatcher } from "svelte";
+
+    const dispatch = createEventDispatcher();
+
     let gameInstance;
     let mainElement;
+
+    let cellSize = 60;
+    function clamp(num, min, max) {
+        if (min > max) [min, max] = [max, min];
+        return num <= min ? min : (num >= max ? max : num);
+    }
+    $: if (gameInstance) {
+        cellSize = clamp(700 / Math.max(gameInstance.getWidth(), gameInstance.getHeight()), 24, 70);
+    }
 
     const Game = class {
         constructor(minesTotal, w, h) {
@@ -32,6 +45,10 @@
             return this.grid;
         }
 
+        getMinesTotal() {
+            return this.minesTotal;
+        }
+
         initGrid() {
             for (let i = 0; i < this.getHeight(); i++) {
                 const line = [];
@@ -60,7 +77,7 @@
                         continue;
                     }
                     const surroundingMines = this.getSurroundingMines(x, y);
-                    this.grid[y][x].value = surroundingMines === 0 ? "" : `./src/assets/numbers/${surroundingMines}.png`;
+                    this.grid[y][x].value = surroundingMines === 0 ? "" : `/src/assets/numbers/${surroundingMines}.png`;
                 }
             }
         }
@@ -72,6 +89,8 @@
                     this.grid[i][j].state = Cell.CELL_STATES.REVEALED;
                 }
             }
+
+            this.minesTotal = this.minesFlagged = 0;
         }
 
         cellLeftClicked(x, y) {
@@ -134,9 +153,19 @@
             }
             return mines;
         }
+        updateFlags() {
+            this.minesFlagged = 0;
+            for (let i = 0; i < this.getHeight(); i++) {
+                for (let j = 0; j < this.getWidth(); j++) {
+                    if (this.grid[i][j].state === Cell.CELL_STATES.FLAGGED) {
+                        this.minesFlagged++;
+                    }
+                }
+            }
+        }
         getCellImage(x, y) {
             if (this.grid[y][x].state !== Cell.CELL_STATES.REVEALED) return "";
-            return this.grid[y][x].mine ? "./src/assets/mine.png" : this.grid[y][x].value;
+            return this.grid[y][x].mine ? "/src/assets/icons/mine.png" : this.grid[y][x].value;
         }
     };
 
@@ -172,14 +201,21 @@
     export const newGame = (/** @type {number} */ minesTotal, width, height) => {
         try {
             gameInstance = new Game(minesTotal, width, height);
+
             return gameInstance;
         } catch (e) {
             console.error(e);
         }
     };
 
+    export const getGame = () => {
+        return gameInstance;
+    };
+
     const onCellClick = (event) => {
         if (gameInstance.gameOver) return;
+
+        dispatch("cellClick", {detail: event.target})
 
         /*
         0: left click
@@ -199,8 +235,7 @@
                 const cell = gameInstance.getGrid()[y][x];
                 cell.nextState();
 
-                if (cell.state === Cell.CELL_STATES.FLAGGED) gameInstance.minesFlagged++;
-                else gameInstance.minesFlagged--;
+                gameInstance.updateFlags();
                 break;
         }
         gameInstance = gameInstance; // svelte quirks
@@ -222,7 +257,7 @@
             <div class="line">
 
                 {#each line as cell, x}
-                    <div id="{x};{y}" class="cell {cell.state} {cell.mine === 2 ? 'myFault' : ''}"
+                    <div style:min-width="{cellSize}px" style:min-height="{cellSize}px" id="{x};{y}" class="cell {cell.state} {cell.mine === 2 ? 'myFault' : ''}"
                     on:mouseup|preventDefault|stopPropagation={onCellClick}>
                         <!-- svelte-ignore a11y-missing-attribute -->
                         <img class="icon" src={gameInstance.getCellImage(x, y)}/>
@@ -246,6 +281,7 @@
     .icon {
         pointer-events: none;
         aspect-ratio: inherit;
+        width: 60%;
     }
     grid {
         user-select: none;
@@ -286,13 +322,13 @@
     }
 
     .cell.revealed:not(.myFault) {
-        background-image: url("./src/assets/revealed.png");
+        background-image: url("/src/assets/icons/revealed.png");
         background-repeat: no-repeat;
         background-size: cover;
     }
 
     .cell:not(.revealed) {
-        background-image: url("./src/assets/unclicked.png");
+        background-image: url("/src/assets/icons/unclicked.png");
         background-repeat: no-repeat;
         background-size: cover;
     }
@@ -303,14 +339,14 @@
     }
 
     .flagged {
-        background-image: url("./src/assets/flagged64.png") !important;
+        background-image: url("/src/assets/icons/flagged64.png") !important;
     }
 
     .doubt {
-        background-image: url("./src/assets/doubt.png") !important;
+        background-image: url("/src/assets/icons/doubt.png") !important;
     }
 
     .myFault {
-        background-image: url("./src/assets/red.png");
+        background-image: url("/src/assets/icons/red.png");
     }
 </style>

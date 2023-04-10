@@ -3,15 +3,17 @@
 
     import Grid from "./lib/Grid.svelte";
 
-    const MAX_MINES = 99;
-    const MAX_WIDTH = 24;
-    const MAX_HEIGHT = 24;
+    const MAX_MINES = 499;
+    const MAX_WIDTH = 50;
+    const MAX_HEIGHT = 50;
 
     let badMineInput = false;
     let badWidthInput = false;
     let badHeightInput = false;
 
     let failToStart = false;
+
+    let gameInstance;
 
     const onCustomInputChange = (event) => {
         event.target.classList.remove("badInput");
@@ -29,18 +31,18 @@
     const DIFFICULTIES = {
         "FACILE": {
             minesTotal: 10,
-            width: 9,
-            height: 9,
+            width: 12,
+            height: 12,
         },
         "NORMAL": {
-            minesTotal: 40,
-            width: 16,
-            height: 16,
+            minesTotal: 46,
+            width: 20,
+            height: 20,
         },
         "DIFFICILE": {
-            minesTotal: 75,
-            width: 30,
-            height: 16,
+            minesTotal: 400,
+            width: 60,
+            height: 45,
         },
         "CUSTOM": {
             minesTotal: null,
@@ -67,15 +69,16 @@
         }
         if (atLeastOneBadInput) return false;
 
-
-        if (difficulty.minesTotal > MAX_MINES) {
-            difficulty.minesTotal = MAX_MINES;
-        }
-        if (difficulty.width > MAX_WIDTH) {
-            difficulty.width = MAX_WIDTH;
-        }
-        if (difficulty.height > MAX_HEIGHT) {
-            difficulty.height = MAX_HEIGHT;
+        if (difficulty === DIFFICULTIES.CUSTOM) {
+            if (difficulty.minesTotal > MAX_MINES) {
+                difficulty.minesTotal = MAX_MINES;
+            }
+            if (difficulty.width > MAX_WIDTH) {
+                difficulty.width = MAX_WIDTH;
+            }
+            if (difficulty.height > MAX_HEIGHT) {
+                difficulty.height = MAX_HEIGHT;
+            }
         }
         return true;
     }
@@ -84,8 +87,15 @@
         const game = grid.newGame(difficulty.minesTotal, difficulty.width, difficulty.height);
         failToStart = !game;
         badMineInput = failToStart;
+
+        gameInstance = game;
     }
 </script>
+
+
+
+
+
 
 <h1>Démineur</h1>
 <main>
@@ -103,14 +113,14 @@
 
             <label>
                 <input type=radio bind:group={difficulty} name="difficulty" value={DIFFICULTIES.DIFFICILE}/>
-                Difficile
+                💀💀💀
             </label>
 
             <label>
                 <input type=radio bind:group={difficulty} name="difficulty" value={DIFFICULTIES.CUSTOM}/>
                 Personnalisé :<br>
                 {#if difficulty === DIFFICULTIES.CUSTOM}
-                    <input class:badInput={badMineInput} on:input={onCustomInputChange} placeholder="1-{MAX_MINES}" disabled={difficulty !== DIFFICULTIES.CUSTOM} bind:value={DIFFICULTIES.CUSTOM.minesTotal} type=number min=1 max={MAX_MINES}/> mines <br>
+                    <input style="width: 34px;" class:badInput={badMineInput} on:input={onCustomInputChange} placeholder="1-{MAX_MINES}" disabled={difficulty !== DIFFICULTIES.CUSTOM} bind:value={DIFFICULTIES.CUSTOM.minesTotal} type=number min=1 max={MAX_MINES}/> mines <br>
                     <input class:badInput={badWidthInput} on:input={onCustomInputChange} placeholder="1-{MAX_WIDTH}" disabled={difficulty !== DIFFICULTIES.CUSTOM} bind:value={DIFFICULTIES.CUSTOM.width} type=number min=1 max={MAX_WIDTH}/>
                     x
                     <input class:badInput={badHeightInput} on:input={onCustomInputChange} placeholder="1-{MAX_HEIGHT}" disabled={difficulty !== DIFFICULTIES.CUSTOM} bind:value={DIFFICULTIES.CUSTOM.height} type=number min=1 max={MAX_HEIGHT}/>
@@ -124,17 +134,24 @@
         </div>
         {#if failToStart}<p class="tooManyMines">Trop de mines par rapport à la taille de la grille</p>{/if}
         <div id="grid">
-            <Grid bind:this={grid}/>
+            <Grid bind:this={grid} on:cellClick={() => gameInstance = gameInstance} />
         </div>
-        {#if grid && !failToStart}
-        <div>
+        {#if grid && gameInstance && !failToStart}
+        <div class="underGrid">
             <!-- svelte-ignore a11y-missing-attribute -->
-            <img src="./src/assets/mine.png" />
-            {grid.minesLeft !== undefined ? grid.minesLeft : ""}
+            <img style="margin: 5px;" src="/src/assets/icons/mine.png" />
+            {#each gameInstance.minesTotal - gameInstance.minesFlagged < 0 ? "0" : (gameInstance.minesTotal - gameInstance.minesFlagged).toString() as digit}
+                <img src="/src/assets/numbers/{digit}.png" />
+            {/each}
         </div>
         {/if}
     </div>
 </main>
+
+
+
+
+
 
 <style>
     main {
@@ -158,8 +175,8 @@
         -webkit-appearance: none;
         margin: 0;
     }
-    /* Firefox */
     input[type=number] {
+        /* Firefox */
         appearance: textfield;
         -moz-appearance: textfield;
 
@@ -205,5 +222,12 @@
         margin-right: -12%; /* Merci CSS */
 
         user-select: none;
+    }
+
+    .underGrid {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 </style>
