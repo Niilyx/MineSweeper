@@ -4,13 +4,13 @@
 
     const Game = class {
         constructor(minesTotal, w, h) {
-            debugger
             this.grid = [];
             this.gridW = w;
             this.gridH = h;
             this.minesTotal = minesTotal;
-            if (this.minesTotal > this.getWidth() * this.getHeight()) {
-                throw new EvalError("Too many mines for the grid size");
+            this.minesFlagged = 0;
+            if (this.minesTotal >= this.getWidth() * this.getHeight()) {
+                throw new EvalError("Too many mines for the grid size")
             }
 
             this.initGrid();
@@ -83,15 +83,14 @@
                 this.setGameOver(-1);
                 return;
             }
-            if (this.grid[y][x].state === Cell.CELL_STATES.UNCLICKED) {
+            if (this.grid[y][x].state === Cell.CELL_STATES.UNCLICKED || this.grid[y][x].state === Cell.CELL_STATES.DOUBT) {
                 this.grid[y][x].state = Cell.CELL_STATES.REVEALED;
                 if (this.grid[y][x].value === "") {
                     this.revealSurrounding(x, y);
                 }
             }
-            if (this.checkWin()) {
+            if (this.checkWin() && !this.gameOver) {
                 this.setGameOver(1);
-                debugger
                 alert("You win!")
             }
         }
@@ -170,9 +169,10 @@
     };
 
     
-    export const newGame = (minesTotal, width, height) => {
+    export const newGame = (/** @type {number} */ minesTotal, width, height) => {
         try {
             gameInstance = new Game(minesTotal, width, height);
+            return gameInstance;
         } catch (e) {
             console.error(e);
         }
@@ -196,7 +196,11 @@
                 gameInstance.cellLeftClicked(x, y);
                 break;
             case 2:
-                gameInstance.getGrid()[y][x].nextState();
+                const cell = gameInstance.getGrid()[y][x];
+                cell.nextState();
+
+                if (cell.state === Cell.CELL_STATES.FLAGGED) gameInstance.minesFlagged++;
+                else gameInstance.minesFlagged--;
                 break;
         }
         gameInstance = gameInstance; // svelte quirks
@@ -215,16 +219,17 @@
         <wrapper>
 
         {#each gameInstance.getGrid() as line, y}
-        <div class="line">
+            <div class="line">
 
-            {#each line as cell, x}
-            <div id="{x};{y}" class="cell {cell.state} {cell.mine === 2 ? 'myFault' : ''}"
-            on:mouseup|preventDefault|stopPropagation={onCellClick}
-            ><!-- svelte-ignore a11y-missing-attribute -->
-            <img src={gameInstance.getCellImage(x, y)}/></div>
-            {/each}
+                {#each line as cell, x}
+                    <div id="{x};{y}" class="cell {cell.state} {cell.mine === 2 ? 'myFault' : ''}"
+                    on:mouseup|preventDefault|stopPropagation={onCellClick}>
+                        <!-- svelte-ignore a11y-missing-attribute -->
+                        <img class="icon" src={gameInstance.getCellImage(x, y)}/>
+                    </div>
+                {/each}
 
-        </div>
+            </div>
         {/each}
 
         </wrapper>
@@ -238,8 +243,9 @@
 
 
 <style>
-    img {
+    .icon {
         pointer-events: none;
+        aspect-ratio: inherit;
     }
     grid {
         user-select: none;
@@ -265,8 +271,8 @@
     }
 
     .cell {
-        width: 70px;
-        height: 70px;
+        min-width: 60px;
+        min-height: 60px;
 
         margin: 0 -1px -1px 0;
 
@@ -276,29 +282,35 @@
 
         background-color: #0c6490;
         
-        border: 1px solid black;
+        /* border: 1px solid black; */
     }
-    .cell:hover {
-        border-color: white;
+
+    .cell.revealed:not(.myFault) {
+        background-image: url("./src/assets/revealed.png");
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+
+    .cell:not(.revealed) {
+        background-image: url("./src/assets/unclicked.png");
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+
+    .cell:hover:not(.revealed) {
+        border-color: hsl(0, 0%, 100%);
         z-index: 10;
     }
 
-    .revealed {
-        background-color: #b8d9ea;
-    }
-
     .flagged {
-        background-image: url("./src/assets/flag.svg");
-        background-size: 40px;
-        background-repeat: no-repeat;
-        background-position: center;
+        background-image: url("./src/assets/flagged64.png") !important;
     }
 
     .doubt {
-        background-color: #f0f0f0;
+        background-image: url("./src/assets/doubt.png") !important;
     }
 
     .myFault {
-        background-color: red;
+        background-image: url("./src/assets/red.png");
     }
 </style>
